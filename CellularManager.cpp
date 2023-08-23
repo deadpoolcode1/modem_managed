@@ -1,17 +1,23 @@
 #include "CellularManager.h"
+#include <dbus-c++/dispatcher.h>  // Include for StandaloneDispatcher
 #include <iostream> // For logging
 
-static const char* MODEM_MANAGER_PATH = "org/freedesktop/ModemManager1";
-static const char* MODEM_MANAGER_SERVICE = "org.freedesktop.ModemManager1";
-static const char* MODEM_MANAGER_INTERFACE = "org.freedesktop.ModemManager1";
+static const char* MODEM_MANAGER_PATH = "org/freedesktop/ModemManager";
+static const char* MODEM_MANAGER_SERVICE = "org.freedesktop.ModemManager";
+static const char* MODEM_MANAGER_INTERFACE = "org.freedesktop.ModemManager";
 
-CellularManager::CellularManager() : conn(DBus::Connection::SystemBus())
+DBus::BusDispatcher CellularManager::dispatcher;
+
+CellularManager::CellularManager() 
+    : conn(DBus::Connection::SystemBus())
 {
+    DBus::default_dispatcher = &dispatcher;
 }
 
 CellularManager::~CellularManager()
 {
 }
+
 
 std::vector<std::string> CellularManager::getAvailableModems() const {
     return {"modem1", "modem2"};

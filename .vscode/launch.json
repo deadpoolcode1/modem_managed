@@ -1,0 +1,31 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug CellularManager",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/modem_managed",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "build CellularManager",  // This should match the label in tasks.json
+            "miDebuggerPath": "/usr/bin/gdb",
+            "logging": {
+                "trace": false,
+                "traceResponse": false,
+                "engineLogging": false
+            }
+        }
+    ]
+}
