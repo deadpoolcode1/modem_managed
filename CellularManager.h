@@ -9,6 +9,8 @@
 
 class CellularManager {
 public:
+    enum State { DISABLED = 0, SEARCHING, REGISTERED, CONNECTED, UNKNOWN };
+    
     using UnsolicitedCallback = std::function<void(const std::string& message)>;
 
     static DBus::BusDispatcher dispatcher;
@@ -23,7 +25,8 @@ public:
     bool isConnectionValidForCriticalData() const;
     void maintainConnection();
     void logIssue(const std::string& issue);
-    
+    State getState(int modemIndex);
+    State getConnectionStatus(State connectionStatus);
     int getModemSignalStrength(const std::string& modemIdentifier) const;
     int getModemBER(const std::string& modemIdentifier) const;
     
@@ -34,6 +37,7 @@ public:
 
 private:
     UnsolicitedCallback unsolicitedCallback;
+    State connectionStatus;
 };
 
 #endif

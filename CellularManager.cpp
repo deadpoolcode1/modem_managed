@@ -26,33 +26,66 @@ CellularManager::~CellularManager()
 std::vector<int> CellularManager::getAvailableModems() {
     std::vector<int> modems;
     
-    // Open the command for reading.
     FILE *fp = popen("mmcli -L", "r");
     if (fp == nullptr) {
         std::cerr << "Failed to run mmcli -L" << std::endl;
         return modems;
     }
     
-    // Read the output a line at a time.
     char path[1035];
     while (fgets(path, sizeof(path) - 1, fp) != nullptr) {
         std::string line(path);
         
-        // Regular expression to extract the index number.
         std::regex regex("/org/freedesktop/ModemManager1/Modem/(\\d+)");
         std::smatch match;
         if (std::regex_search(line, match, regex) && match.size() > 1) {
-            // If the line contains a modem index, store it.
             modems.push_back(std::stoi(match.str(1)));
         }
     }
     
-    // Close the file pointer.
     pclose(fp);
     
     return modems;
 }
+CellularManager::State CellularManager::getState(int modemIndex) {
+    std::string cmd = "mmcli --modem=" + std::to_string(modemIndex) + " | grep -E '\\|\\s+state:' | awk '{print $NF}'";
+    char buffer[128];
+    std::string result = "";
+    FILE* pipe = popen(cmd.c_str(), "r");
 
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+
+    try {
+        while (fgets(buffer, sizeof buffer, pipe) != NULL) {
+            result += buffer;
+        }
+    } catch (...) {
+        pclose(pipe);
+        throw;
+    }
+
+    pclose(pipe);
+
+    // Trim the new line at the end
+    result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
+
+    // Convert string to enum
+    if (result == "disabled") {
+        connectionStatus = State::DISABLED;
+    } else if (result == "searching") {
+        connectionStatus = State::SEARCHING;
+    } else if (result == "registered") {
+        connectionStatus = State::REGISTERED;
+    } else if (result == "connected") {
+        connectionStatus = State::CONNECTED;
+    } else {
+        connectionStatus =  State::UNKNOWN;
+    }
+
+    return connectionStatus;
+}
 
 bool CellularManager::connectModem(const std::string& modemIdentifier, const std::string& apn, const std::string& username, const std::string& password) {
     std::cout << "Connecting to modem: " << modemIdentifier << std::endl;
@@ -95,4 +128,8 @@ void CellularManager::handleUnsolicitedIndication(const std::string& message) {
     if (unsolicitedCallback) {
         unsolicitedCallback(message);
     }
+}
+
+CellularManager::State getConnectionStatus(CellularManager::State connectionStatus) {
+    return connectionStatus;
 }
