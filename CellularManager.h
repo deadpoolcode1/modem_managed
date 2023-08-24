@@ -21,7 +21,7 @@ public:
     std::vector<int> getAvailableModems();
     bool connectModem(const std::string& modemIdentifier, const std::string& apn, const std::string& username, const std::string& password);
     void disconnectModem(const std::string& modemIdentifier);
-    
+    void enableModem(int modemIndex);
     bool isConnectionValidForCriticalData() const;
     void maintainConnection();
     void logIssue(const std::string& issue);
