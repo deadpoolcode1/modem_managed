@@ -1,14 +1,19 @@
-#include <iostream>
 #include "CellularManager.h"
+#include <iostream>
+
 int main() {
-    DBus::BusDispatcher dispatcher;
-    DBus::default_dispatcher = &dispatcher;
-    CellularManager cm;
-    std::vector<std::string> availableModems = cm.getAvailableModems();
-    std::cout << "Available modems: ";
-    for (const auto& modem : availableModems) {
-        std::cout << modem << " ";
+    CellularManager cellularManager;
+
+    std::vector<int> availableModems = cellularManager.getAvailableModems();
+
+    if (availableModems.empty()) {
+        std::cout << "No modems available.\n";
+    } else {
+        std::cout << "Available modems:\n";
+        for (int modem : availableModems) {
+            std::cout << "  Modem index: " << modem << '\n';
+        }
     }
-    std::cout << std::endl;
+
     return 0;
 }

@@ -16,7 +16,7 @@ public:
     CellularManager();
     ~CellularManager();
     
-    std::vector<std::string> getAvailableModems() const;
+    std::vector<int> getAvailableModems();
     bool connectModem(const std::string& modemIdentifier, const std::string& apn, const std::string& username, const std::string& password);
     void disconnectModem(const std::string& modemIdentifier);
     
@@ -33,7 +33,6 @@ public:
     void handleUnsolicitedIndication(const std::string& message);
 
 private:
-    DBus::Connection conn;
     UnsolicitedCallback unsolicitedCallback;
 };
 
