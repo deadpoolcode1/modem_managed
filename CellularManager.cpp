@@ -8,11 +8,13 @@
 #include <string>
 #include <cstdio>
 #include <regex>
+#include <algorithm>
 
 static const char* MODEM_MANAGER_PATH = "org/freedesktop/ModemManager";
 static const char* MODEM_MANAGER_SERVICE = "org.freedesktop.ModemManager";
 static const char* MODEM_MANAGER_INTERFACE = "org.freedesktop.ModemManager";
-
+const std::string CellularManager::DEFAULT_APN = "rem8.com";
+const std::string CellularManager::DEFAULT_IPTYPE = "ipv4";
 
 CellularManager::CellularManager() 
 {
@@ -22,6 +24,63 @@ CellularManager::~CellularManager()
 {
 }
 
+std::string CellularManager::getModemApn(int modemIndex) {
+    std::string cmd = "mmcli --modem=" + std::to_string(modemIndex) + " | grep -E '\\|\\s+initial bearer apn:' | awk '{print $NF}'";
+    char buffer[128];
+    std::string result = "";
+    FILE* pipe = popen(cmd.c_str(), "r");
+
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+
+    try {
+        while (fgets(buffer, sizeof buffer, pipe) != NULL) {
+            result += buffer;
+        }
+    } catch (...) {
+        pclose(pipe);
+        throw;
+    }
+
+    pclose(pipe);
+    // Trim the new line at the end
+    result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
+
+    if (result.empty()) {
+        return DEFAULT_APN;
+    }
+    return result;
+}
+
+std::string CellularManager::getModemIpType(int modemIndex) {
+    std::string cmd = "mmcli --modem=" + std::to_string(modemIndex) + " | grep -E '\\|\\s+initial bearer ip type:' | awk '{print $NF}'";
+    char buffer[128];
+    std::string result = "";
+    FILE* pipe = popen(cmd.c_str(), "r");
+
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+
+    try {
+        while (fgets(buffer, sizeof buffer, pipe) != NULL) {
+            result += buffer;
+        }
+    } catch (...) {
+        pclose(pipe);
+        throw;
+    }
+
+    pclose(pipe);
+    // Trim the new line at the end
+    result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
+
+    if (result.empty()) {
+        return DEFAULT_IPTYPE;
+    }
+    return result;
+}
 
 std::vector<int> CellularManager::getAvailableModems() {
     std::vector<int> modems;
@@ -97,9 +156,21 @@ void CellularManager::enableModem(int modemIndex) {
     }
 }
 
-bool CellularManager::connectModem(const std::string& modemIdentifier, const std::string& apn, const std::string& username, const std::string& password) {
-    std::cout << "Connecting to modem: " << modemIdentifier << std::endl;
-    return true;
+bool CellularManager::connectModem(int modemIndex) {
+    std::string apn = getModemApn(modemIndex);
+    std::string ipType = getModemIpType(modemIndex);
+    
+    std::string connectCmd = "mmcli --modem=" + std::to_string(modemIndex) +
+                             " --simple-connect='apn=" + apn + ",ip-type=" + ipType + "'";
+    
+    int result = std::system(connectCmd.c_str());
+    if (result == 0) {
+        std::cout << "Modem connected successfully." << std::endl;
+        return true;
+    } else {
+        std::cerr << "Failed to connect modem." << std::endl;
+        return false;
+    }
 }
 
 void CellularManager::disconnectModem(const std::string& modemIdentifier) {

@@ -10,16 +10,18 @@
 class CellularManager {
 public:
     enum State { DISABLED = 0, SEARCHING, REGISTERED, CONNECTED, UNKNOWN };
-    
-    using UnsolicitedCallback = std::function<void(const std::string& message)>;
+    static const std::string DEFAULT_APN;
+    static const std::string DEFAULT_IPTYPE;
 
+    using UnsolicitedCallback = std::function<void(const std::string& message)>;
     static DBus::BusDispatcher dispatcher;
 
     CellularManager();
     ~CellularManager();
-    
+    std::string getModemApn(int modemIndex);
+    std::string getModemIpType(int modemIndex);
     std::vector<int> getAvailableModems();
-    bool connectModem(const std::string& modemIdentifier, const std::string& apn, const std::string& username, const std::string& password);
+    bool connectModem(int modemIndex);
     void disconnectModem(const std::string& modemIdentifier);
     void enableModem(int modemIndex);
     bool isConnectionValidForCriticalData() const;

@@ -5,9 +5,7 @@
 
 int main() {
     CellularManager cellularManager;
-
     std::vector<int> availableModems = cellularManager.getAvailableModems();
-
     if (!availableModems.empty()) {
         while (true) {
             CellularManager::State currentState = cellularManager.getState(availableModems[0]);
@@ -21,7 +19,8 @@ int main() {
                     // Handle SEARCHING state
                     break;
                 case CellularManager::REGISTERED:
-                    // Handle REGISTERED state
+                    std::cout << "Modem is REGISTERED. Connecting..." << std::endl;
+                    cellularManager.connectModem(availableModems[0]);
                     break;
                 case CellularManager::CONNECTED:
                     // Handle CONNECTED state
@@ -35,7 +34,6 @@ int main() {
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
     }
-    
     return 0;
 }
 
