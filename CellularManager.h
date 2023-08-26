@@ -18,6 +18,9 @@ public:
 
     CellularManager();
     ~CellularManager();
+
+    void parseCommandLine(int argc, char *argv[]);
+    void setupSignalChecking(int modemIndex);
     std::string getModemApn(int modemIndex);
     std::string getModemIpType(int modemIndex);
     std::vector<int> getAvailableModems();
@@ -29,15 +32,16 @@ public:
     void logIssue(const std::string& issue);
     State getState(int modemIndex);
     State getConnectionStatus(State connectionStatus);
-    int getModemSignalStrength(const std::string& modemIdentifier) const;
+    int getModemSignalStrength(int modemIndex);
     int getModemBER(const std::string& modemIdentifier) const;
     
     void registerUnsolicitedListener(const UnsolicitedCallback& callback);
     void unregisterUnsolicitedListener();
     
     void handleUnsolicitedIndication(const std::string& message);
-
+    int getMinRSSILevel();
 private:
+    int minRSSILevel = -120; //basically means connect without min level
     UnsolicitedCallback unsolicitedCallback;
     State connectionStatus;
 };

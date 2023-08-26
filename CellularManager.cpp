@@ -9,6 +9,8 @@
 #include <cstdio>
 #include <regex>
 #include <algorithm>
+#include <getopt.h>
+#include <cstdlib>
 
 static const char* MODEM_MANAGER_PATH = "org/freedesktop/ModemManager";
 static const char* MODEM_MANAGER_SERVICE = "org.freedesktop.ModemManager";
@@ -82,6 +84,18 @@ std::string CellularManager::getModemIpType(int modemIndex) {
     return result;
 }
 
+void CellularManager::setupSignalChecking(int modemIndex) {
+    // Setup the signal checking
+    std::string setupCmd = "mmcli --modem=" + std::to_string(modemIndex) + " --signal-setup=5";
+    int ret = std::system(setupCmd.c_str());
+
+    if (ret != 0) {
+        std::cerr << "Failed to set up signal checking for modem index " << modemIndex << std::endl;
+    } else {
+        std::cout << "Successfully set up signal checking for modem index " << modemIndex << std::endl;
+    }
+}
+
 std::vector<int> CellularManager::getAvailableModems() {
     std::vector<int> modems;
     
@@ -102,10 +116,19 @@ std::vector<int> CellularManager::getAvailableModems() {
         }
     }
     
-    pclose(fp);
-    
+    if (!modems.empty()) {
+        std::cout << "Available modem indexes: ";
+        for (const auto& modemIndex : modems) {
+            std::cout << modemIndex << ' ';
+        }
+        std::cout << std::endl;
+    } else {
+        std::cout << "No available modems." << std::endl;
+    }
+
     return modems;
 }
+
 CellularManager::State CellularManager::getState(int modemIndex) {
     std::string cmd = "mmcli --modem=" + std::to_string(modemIndex) + " | grep -E '\\|\\s+state:' | awk '{print $NF}'";
     char buffer[128];
@@ -126,22 +149,26 @@ CellularManager::State CellularManager::getState(int modemIndex) {
     }
 
     pclose(pipe);
+    std::cout << "Raw modem status: " << result << std::endl;
+    std::cout << "Comparison result: " << (result == "connected") << std::endl;
 
     // Trim the new line at the end
     result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
+    std::cout << "Comparison result: " << (result == "connected") << std::endl;
 
     // Convert string to enum
-    if (result == "disabled") {
+    if (result.find("disabled") != std::string::npos) {
         connectionStatus = State::DISABLED;
-    } else if (result == "searching") {
+    } else if (result.find("searching") != std::string::npos) {
         connectionStatus = State::SEARCHING;
-    } else if (result == "registered") {
+    } else if (result.find("registered") != std::string::npos) {
         connectionStatus = State::REGISTERED;
-    } else if (result == "connected") {
+    } else if (result.find("connected") != std::string::npos) {
         connectionStatus = State::CONNECTED;
     } else {
         connectionStatus =  State::UNKNOWN;
     }
+
     std::cout << "Modem status:" <<  connectionStatus << std::endl;
     return connectionStatus;
 }
@@ -189,8 +216,39 @@ void CellularManager::logIssue(const std::string& issue) {
     std::cerr << "Issue: " << issue << std::endl;
 }
 
-int CellularManager::getModemSignalStrength(const std::string& modemIdentifier) const {
-    return 0;
+int CellularManager::getModemSignalStrength(int modemIndex) {
+    std::string signalCommand = "mmcli --modem=" + std::to_string(modemIndex) + " --signal-get";
+    FILE* fp = popen(signalCommand.c_str(), "r");
+    
+    if (fp == nullptr) {
+        std::cerr << "Failed to run command" << std::endl;
+        return -1;  // Indicating an error
+    }
+    
+    char buffer[128];
+    std::string signalInfo = "";
+    while (fgets(buffer, sizeof(buffer)-1, fp) != nullptr) {
+        signalInfo += buffer;
+    }
+    
+    pclose(fp);
+    
+    // Parsing the output to find the signal strength
+    std::string keyword = "rssi:";
+    auto pos = signalInfo.find(keyword);
+    if (pos == std::string::npos) {
+        std::cout << "Could not find RSSI information" << std::endl;
+        return -1;
+    }
+    
+    std::stringstream ss(signalInfo.substr(pos + keyword.size()));
+    int rssi;
+    ss >> rssi;
+
+    // Print the RSSI value
+    std::cout << "Modem signal strength: " << rssi << " dBm" << std::endl;
+
+    return rssi;
 }
 
 int CellularManager::getModemBER(const std::string& modemIdentifier) const {
@@ -213,4 +271,34 @@ void CellularManager::handleUnsolicitedIndication(const std::string& message) {
 
 CellularManager::State getConnectionStatus(CellularManager::State connectionStatus) {
     return connectionStatus;
+}
+
+void CellularManager::parseCommandLine(int argc, char *argv[]) {
+    int opt;
+    static struct option long_options[] = {
+        {"connect", required_argument, 0, 'c'},
+        {0, 0, 0, 0}
+    };
+    int option_index = 0;
+    bool rssiLevelSet = false;
+
+    while ((opt = getopt_long(argc, argv, "c:", long_options, &option_index)) != -1) {
+        switch (opt) {
+            case 'c':
+                minRSSILevel = std::atoi(optarg);
+                rssiLevelSet = true;
+                break;
+            default:
+                std::cerr << "Usage: " << argv[0] << " [-c minRSSILevel] [--connect=minRSSILevel]" << std::endl;
+                exit(EXIT_FAILURE);
+        }
+    }
+
+    if (rssiLevelSet) {
+        std::cout << "Minimum RSSI level to connect: " << minRSSILevel << std::endl;
+    }
+}
+
+int CellularManager::getMinRSSILevel() {
+    return minRSSILevel;
 }
