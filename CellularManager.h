@@ -5,7 +5,6 @@
 #include <vector>
 #include <memory> 
 #include <functional>
-#include <dbus-c++/dbus.h>
 
 class CellularManager {
 public:
@@ -14,7 +13,6 @@ public:
     static const std::string DEFAULT_IPTYPE;
 
     using UnsolicitedCallback = std::function<void(const std::string& message)>;
-    static DBus::BusDispatcher dispatcher;
 
     CellularManager();
     ~CellularManager();

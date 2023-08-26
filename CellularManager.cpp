@@ -1,7 +1,4 @@
 #include "CellularManager.h"
-#include <dbus-c++/dispatcher.h> 
-#include <dbus-c++/dbus.h>
-#include <dbus-c++/types.h>
 #include <iostream> // For logging
 #include <sstream>
 #include <vector>
@@ -37,21 +34,24 @@ std::string CellularManager::getModemApn(int modemIndex) {
     }
 
     try {
-        while (fgets(buffer, sizeof buffer, pipe) != NULL) {
+        while (fgets(buffer, sizeof(buffer), pipe) != NULL) {
             result += buffer;
         }
     } catch (...) {
         pclose(pipe);
-        throw;
+        throw std::runtime_error("An exception occurred while reading from the pipe.");
     }
 
     pclose(pipe);
+
     // Trim the new line at the end
     result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
 
     if (result.empty()) {
         return DEFAULT_APN;
     }
+
+    std::cout << "APN Found: " << result << std::endl; // Optional, remove if not needed
     return result;
 }
 
@@ -66,21 +66,24 @@ std::string CellularManager::getModemIpType(int modemIndex) {
     }
 
     try {
-        while (fgets(buffer, sizeof buffer, pipe) != NULL) {
+        while (fgets(buffer, sizeof(buffer), pipe) != NULL) {
             result += buffer;
         }
     } catch (...) {
         pclose(pipe);
-        throw;
+        throw std::runtime_error("An exception occurred while reading from pipe");
     }
 
     pclose(pipe);
+
     // Trim the new line at the end
     result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
 
     if (result.empty()) {
         return DEFAULT_IPTYPE;
     }
+
+    std::cout << "IP Found: " << result << std::endl;
     return result;
 }
 

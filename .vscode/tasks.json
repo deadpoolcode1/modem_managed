@@ -1,20 +1,97 @@
 {
     "version": "2.0.0",
+    /* Configure Yocto SDK Constants from settings.json */
+    "options": {
+        "env": {
+            "CXX": "${config:MCONFIG.CXX}",
+            "CC": "${config:MCONFIG.CC}",
+        }
+     },
+     /* Configure integrated VS Code Terminal */
+     "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "showReuseMessage": true,
+    },
     "tasks": [
+        /* Configure launch.json (debug) preLaunchTask Task */
         {
-            "label": "build CellularManager",
-            "type": "shell",
-            "command": "g++ -Wall -std=c++14 `pkg-config --cflags dbus-1` -I/usr/include/dbus-c++-1 ${workspaceFolder}/*.cpp -o ${workspaceFolder}/modem_managed -ldbus-c++-1 `pkg-config --libs dbus-1`",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "options": {
-                "shell": {
-                    "executable": "bash",
-                    "args": ["-c"]
+            "label": "var-deploy-gdb",
+            "isBackground": true,
+            "problemMatcher":{
+                "base": "$gcc",
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern":  "Deploying to target",
+                    "endsPattern":  "Starting GDB Server on Target"
                 }
-            }
+            },
+            "type": "shell",
+            "command": "sh",
+            "args": [
+                "var-deploy-gdb.sh",
+                "${config:MCONFIG.TARGET_IP}",
+                "${config:MCONFIG.PROGRAM}"
+            ],
+            "dependsOn": ["build"],
+            "options": {
+                "env": {
+                    "CXX": "${config:MCONFIG.CXX}",
+                    "CC": "${config:MCONFIG.CC}",
+                }
+            },
+        },
+        {
+            "label": "var-deploy-gdb-host",
+            "isBackground": true,
+            "problemMatcher":{
+                "base": "$gcc",
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern":  "Debug over Host PC",
+                    "endsPattern":  "Starting GDB Server on Host PC"
+                }
+            },
+            "type": "shell",
+            "command": "sh",
+            "args": [
+                "var-deploy-gdb-host.sh",
+                "${config:HostPC.TARGET_IP}",
+                "${config:HostPC.PROGRAM}"
+            ],
+            "dependsOn": ["build"],
+            "options": {
+                "env": {
+                    "CXX": "${config:HostPC.CXX}",
+                    "CC": "${config:HostPC.CC}",
+                }
+            },
+        },
+        {
+            "label": "Build with cross compiler",
+            "type": "shell",
+            "command": "make clean OUTPUT=${config:MCONFIG.PROGRAM}; make -j$(nproc) OUTPUT=${config:MCONFIG.PROGRAM}",
+            "problemMatcher": ["$gcc"],
+            "options": {
+                "env": {
+                    "CXX": "${config:MCONFIG.CXX}",
+                    "CC": "${config:MCONFIG.CC}",
+                }
+            },
+        },
+        {
+            "label": "Build with host compiler",
+            "type": "shell",
+            "command": "make clean OUTPUT=${config:HostPC.PROGRAM}; make -j$(nproc) OUTPUT=${config:HostPC.PROGRAM}",
+            "problemMatcher": ["$gcc"],
+            "options": {
+                "env": {
+                    "CXX": "${config:HostPC.CXX}",
+                    "CC": "${config:HostPC.CC}",
+                }
+            },
         }
     ]
 }

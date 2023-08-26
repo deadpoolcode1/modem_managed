@@ -1,2 +1,3 @@
 *.o
 modem_managed
+*.bin

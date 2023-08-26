@@ -2,11 +2,10 @@
     "configurations": [
         {
             "name": "Linux",
-            "includePath": ["${workspaceFolder}/**", "/usr/include/**"],
-            "compilerPath": "/usr/bin/gcc",
-            "cStandard": "c11",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "gcc-x64"
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${config:MCONFIG.SDKTARGETSYSROOT}/usr/include/**"
+            ]
         }
     ],
     "version": 4
