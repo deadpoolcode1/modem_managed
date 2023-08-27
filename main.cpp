@@ -25,6 +25,10 @@ int main(int argc, char *argv[]) {
                 // Call assignIP only when just changing state to CONNECTED
                 cellularManager.assignIp(modem);
             }
+
+            if (currentState != previousState) {
+                Logic::resetUnknownStateCounter();
+            }
             
             // Switch-case block
             switch (currentState) {
@@ -33,7 +37,7 @@ int main(int argc, char *argv[]) {
                     break;
                     
                 case CellularManager::SEARCHING:
-                    Logic::handleSearchingState(cellularManager, searchStartTime, modem);
+                    Logic::handleSearchingState(cellularManager, searchStartTime, modem, currentRSSI);
                     break;
                     
                 case CellularManager::REGISTERED:
@@ -52,8 +56,8 @@ int main(int argc, char *argv[]) {
             // Update the previous state to the current state for the next iteration
             previousState = currentState;
             
-            // Sleep for a second before checking the state again
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            // Sleep before checking the state again
+            std::this_thread::sleep_for(std::chrono::seconds(10));
         }
     }
     return 0;
