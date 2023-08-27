@@ -251,6 +251,7 @@ void CellularManager::parseCommandLine(int argc, char *argv[]) {
     static struct option long_options[] = {
         {"connect", required_argument, 0, 'c'},
         {"minRSSI", required_argument, 0, 'r'},
+        {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
     };
     int option_index = 0;
@@ -265,6 +266,13 @@ void CellularManager::parseCommandLine(int argc, char *argv[]) {
                 minRSSILevel = std::stoi(optarg);
                 std::cout << "Minimum RSSI Level set to: " << minRSSILevel << std::endl;
                 break;
+            case 'h':
+                std::cout << "Usage: " << argv[0] << " [OPTIONS]\n"
+                      << "Options:\n"
+                      << "  -c, --connect TIME     Set max connect time\n"
+                      << "  -r, --minRSSI LEVEL    Set minimum RSSI level\n"
+                      << "  -h, --help             Show this help message\n";
+            exit(0);
             default:
                 std::cerr << "Invalid option" << std::endl;
                 break;
