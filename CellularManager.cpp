@@ -234,6 +234,78 @@ int CellularManager::getModemSignalStrength(int modemIndex) {
     return rssi;
 }
 
+void CellularManager::assignIp(int modemIndex) {
+    // Declare variables
+    std::string bearerIndex;
+    std::string ipInterface;
+    std::string ipAddress;
+    std::string ipGateway;
+    std::string ipMtu;
+    std::vector<std::string> ipDnsArray;
+
+    // Command to get bearer index
+    std::string cmd = "mmcli --modem=" + std::to_string(modemIndex) + " | grep -E 'Bearer\\s+\\|\\s+paths:' | awk -F'/' '{print $NF}'";
+    bearerIndex = executeCommand(cmd);
+
+    // Command to get IP interface
+    cmd = "mmcli --modem=" + std::to_string(modemIndex) + " --bearer=" + bearerIndex + " | grep -E '\\|\\s+interface:' | awk '{print $NF}'";
+    ipInterface = executeCommand(cmd);
+
+    // Command to get IP address
+    cmd = "mmcli --modem=" + std::to_string(modemIndex) + " --bearer=" + bearerIndex + " | grep -E '\\|\\s+address:' | awk '{print $NF}'";
+    ipAddress = executeCommand(cmd);
+
+    // Command to get IP gateway
+    cmd = "mmcli --modem=" + std::to_string(modemIndex) + " --bearer=" + bearerIndex + " | grep -E '\\|\\s+gateway:' | awk '{print $NF}'";
+    ipGateway = executeCommand(cmd);
+
+    // Command to get MTU
+    cmd = "mmcli --modem=" + std::to_string(modemIndex) + " --bearer=" + bearerIndex + " | grep -E '\\|\\s+mtu:' | awk '{print $NF}'";
+    ipMtu = executeCommand(cmd);
+
+    // Command to get DNS servers
+    cmd = "mmcli --modem=" + std::to_string(modemIndex) + " --bearer=" + bearerIndex + " | grep -E '\\|\\s+dns:'";
+    std::string dnsString = executeCommand(cmd);
+    // Assuming executeCommand returns the command output, here we parse DNS servers
+    std::regex re("[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}");
+    std::sregex_iterator it(dnsString.begin(), dnsString.end(), re);
+    for (std::sregex_iterator end; it != end; ++it) {
+        ipDnsArray.push_back(it->str());
+    }
+
+    // Use the collected information to setup IP
+    std::system(("ip link set " + ipInterface + " up").c_str());
+    std::system(("ip addr add " + ipAddress + "/32 dev " + ipInterface).c_str());
+    std::system(("ip link set dev " + ipInterface + " arp off").c_str());
+    std::system(("ip link set dev " + ipInterface + " mtu " + ipMtu).c_str());
+    std::system(("ip route add default dev " + ipInterface + " metric 200").c_str());
+
+    // Add DNS servers
+    for (const auto& dns : ipDnsArray) {
+        std::system(("sh -c \"echo 'nameserver " + dns + "' >> /etc/resolv.conf\"").c_str());
+    }
+}
+
+std::string CellularManager::executeCommand(const std::string& cmd) {
+    char buffer[128];
+    std::string result;
+    FILE* pipe = popen(cmd.c_str(), "r");
+    if (!pipe) throw std::runtime_error("popen() failed!");
+
+    try {
+        while (fgets(buffer, sizeof buffer, pipe) != NULL) {
+            result += buffer;
+        }
+    } catch (...) {
+        pclose(pipe);
+        throw;
+    }
+
+    pclose(pipe);
+    result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
+    return result;
+}
+
 void CellularManager::resetHw() {
     //stub
 }

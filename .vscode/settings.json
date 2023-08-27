@@ -86,6 +86,15 @@
 		"thread": "cpp",
 		"cinttypes": "cpp",
 		"typeinfo": "cpp",
-		"chrono": "cpp"
+		"chrono": "cpp",
+		"ctime": "cpp",
+		"bitset": "cpp",
+		"codecvt": "cpp",
+		"deque": "cpp",
+		"ratio": "cpp",
+		"regex": "cpp",
+		"shared_mutex": "cpp",
+		"cfenv": "cpp",
+		"variant": "cpp"
 	}
 }

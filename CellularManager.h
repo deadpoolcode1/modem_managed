@@ -28,7 +28,8 @@ public:
     State getState(int modemIndex);
     int getModemSignalStrength(int modemIndex);
     void resetHw();
-    
+    void assignIp(int modemIndex);
+    std::string executeCommand(const std::string& cmd); 
     int getMinRSSILevel();
     int getMaxConnectTime();
 private:
