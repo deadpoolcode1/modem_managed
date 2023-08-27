@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <getopt.h>
 #include <cstdlib>
+#include <dbus-c++/dispatcher.h>
 
 static const char* MODEM_MANAGER_PATH = "org/freedesktop/ModemManager";
 static const char* MODEM_MANAGER_SERVICE = "org.freedesktop.ModemManager";
@@ -15,8 +16,11 @@ static const char* MODEM_MANAGER_INTERFACE = "org.freedesktop.ModemManager";
 const std::string CellularManager::DEFAULT_APN = "rem8.com";
 const std::string CellularManager::DEFAULT_IPTYPE = "ipv4";
 
-CellularManager::CellularManager() 
+DBus::BusDispatcher CellularManager::dispatcher;
+
+CellularManager::CellularManager() : conn(DBus::Connection::SystemBus())
 {
+    DBus::default_dispatcher = &dispatcher;
 }
 
 CellularManager::~CellularManager()
@@ -73,6 +77,23 @@ std::vector<int> CellularManager::getAvailableModems() {
     }
 
     return modems;
+}
+
+std::vector<std::string> CellularManager::scanModems() {
+    std::vector<std::string> scannedModems;
+    try {
+        auto msg = DBus::CallMessage("org.freedesktop.ModemManager1",
+            "/org/freedesktop/ModemManager1", "org.freedesktop.ModemManager1", "ScanDevices");
+
+        DBus::MessageIter args = conn.send_blocking(msg).reader();
+        while (args.has_next()) {
+            scannedModems.push_back(args.get_string());
+            ++args;
+        }
+    } catch (const DBus::Error& e) {
+        std::cerr << "D-Bus error: " << e.what() << std::endl;
+    }
+    return scannedModems;
 }
 
 CellularManager::State CellularManager::getState(int modemIndex) {

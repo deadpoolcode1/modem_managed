@@ -5,10 +5,10 @@ OUTPUT ?= modem_host.bin
 CXX ?= /usr/bin/g++
 
 # Flags
-CXXFLAGS ?= -Og -g
+CXXFLAGS ?= -Og -g $(shell pkg-config --cflags dbus-1) -I/usr/include/dbus-c++-1
 
 # Libraries
-LIBS = -lpthread
+LIBS = -lpthread -ldbus-c++-1 `pkg-config --libs dbus-1`
 
 # Source files
 SRCS = main.cpp CellularManager.cpp Logic.cpp

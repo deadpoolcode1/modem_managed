@@ -7,6 +7,9 @@
 #include <thread>   
 
 int main(int argc, char *argv[]) {
+    DBus::BusDispatcher dispatcher;
+    DBus::default_dispatcher = &dispatcher;
+
     CellularManager cellularManager;
     cellularManager.parseCommandLine(argc, argv);
     std::vector<int> availableModems = cellularManager.getAvailableModems();

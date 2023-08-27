@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory> 
 #include <functional>
+#include <dbus-c++/dbus.h>
 
 class CellularManager {
 public:
@@ -14,6 +15,8 @@ public:
 
     using UnsolicitedCallback = std::function<void(const std::string& message)>;
 
+    static DBus::BusDispatcher dispatcher;
+
     CellularManager();
     ~CellularManager();
 
@@ -22,6 +25,7 @@ public:
     std::string getModemApn(int modemIndex);
     std::string getModemIpType(int modemIndex);
     std::vector<int> getAvailableModems();
+    std::vector<std::string> scanModems();
     bool connectModem(int modemIndex);
     void disconnectModem(const std::string& modemIdentifier);
     void enableModem(int modemIndex);
@@ -38,6 +42,7 @@ private:
     int maxConnectTime = 300;
     UnsolicitedCallback unsolicitedCallback;
     State connectionStatus;
+    DBus::Connection conn;
 };
 
 #endif
