@@ -72,7 +72,7 @@
         {
             "label": "Build with cross compiler",
             "type": "shell",
-            "command": "make clean OUTPUT=${config:MCONFIG.PROGRAM}; make -j$(nproc) OUTPUT=${config:MCONFIG.PROGRAM}",
+            "command": "make -j$(nproc) OUTPUT=${config:MCONFIG.PROGRAM}",
             "problemMatcher": ["$gcc"],
             "options": {
                 "env": {
@@ -84,7 +84,7 @@
         {
             "label": "Build with host compiler",
             "type": "shell",
-            "command": "make clean OUTPUT=${config:HostPC.PROGRAM}; make -j$(nproc) OUTPUT=${config:HostPC.PROGRAM}",
+            "command": "make -j$(nproc) OUTPUT=${config:HostPC.PROGRAM}",
             "problemMatcher": ["$gcc"],
             "options": {
                 "env": {
