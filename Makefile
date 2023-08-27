@@ -11,7 +11,7 @@ CXXFLAGS ?= -Og -g
 LIBS = -lpthread
 
 # Source files
-SRCS = main.cpp CellularManager.cpp
+SRCS = main.cpp CellularManager.cpp Logic.cpp
 OBJS = $(SRCS:.cpp=.o)
 
 all: $(OUTPUT)

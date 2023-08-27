@@ -1,7 +1,7 @@
 #!/bin/bash
 readonly TARGET_IP="$1"
 readonly PROGRAM="$2"
-readonly TARGET_DIR="/home/root"
+readonly TARGET_DIR="/etc"
 
 # Must match startsPattern in tasks.json
 echo "Deploying to target"

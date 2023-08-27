@@ -1,7 +1,7 @@
 {
 	"MCONFIG": {
 		/* Target Device Settings */
-		"TARGET_IP":"10.100.102.48",
+		"TARGET_IP":"10.100.102.66",
 
 		/* Project Settings */
 		"PROGRAM":"modem_evb.bin",
