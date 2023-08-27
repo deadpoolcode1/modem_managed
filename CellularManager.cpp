@@ -48,32 +48,29 @@ void CellularManager::setupSignalChecking(int modemIndex) {
 
 std::vector<int> CellularManager::getAvailableModems() {
     std::vector<int> modems;
-    
-    FILE *fp = popen("mmcli -L", "r");
-    if (fp == nullptr) {
-        std::cerr << "Failed to run mmcli -L" << std::endl;
-        return modems;
-    }
-    
-    char path[1035];
-    while (fgets(path, sizeof(path) - 1, fp) != nullptr) {
-        std::string line(path);
-        
-        std::regex regex("/org/freedesktop/ModemManager1/Modem/(\\d+)");
-        std::smatch match;
-        if (std::regex_search(line, match, regex) && match.size() > 1) {
-            modems.push_back(std::stoi(match.str(1)));
+
+    try {
+        auto msg = DBus::CallMessage("org.freedesktop.ModemManager1",
+            "/org/freedesktop/ModemManager1", "org.freedesktop.DBus.ObjectManager", "GetManagedObjects");
+
+        DBus::MessageIter args = conn.send_blocking(msg).reader();
+        while (args.has_next()) {
+            modems.push_back(args.get_int32());
+            std::cout << "Modem path: " << args.get_path() << std::endl;
+            ++args;
         }
-    }
-    
-    if (!modems.empty()) {
-        std::cout << "Available modem indexes: ";
-        for (const auto& modemIndex : modems) {
-            std::cout << modemIndex << ' ';
+
+        if (!modems.empty()) {
+            std::cout << "Available modem indexes: ";
+            for (const auto& modemIndex : modems) {
+                std::cout << modemIndex << ' ';
+            }
+            std::cout << std::endl;
+        } else {
+            std::cout << "No available modems." << std::endl;
         }
-        std::cout << std::endl;
-    } else {
-        std::cout << "No available modems." << std::endl;
+    } catch (const DBus::Error& e) {
+        std::cerr << "D-Bus error: " << e.what() << std::endl;
     }
 
     return modems;
