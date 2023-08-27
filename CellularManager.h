@@ -29,7 +29,8 @@ public:
     int getModemSignalStrength(int modemIndex);
     void resetHw();
     void assignIp(int modemIndex);
-    std::string executeCommand(const std::string& cmd); 
+    std::string executeCommand(const std::string& cmd);
+    std::string getModemInfo(int modemIndex, const std::string& infoType); 
     int getMinRSSILevel();
     int getMaxConnectTime();
 private:
