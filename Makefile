@@ -1,6 +1,3 @@
-# Debug line to print the value of CXX
-$(info $$CXX is [${CXX}])
-
 # Output binary
 OUTPUT ?= modem_host.bin
 

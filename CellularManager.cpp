@@ -152,12 +152,8 @@ CellularManager::State CellularManager::getState(int modemIndex) {
     }
 
     pclose(pipe);
-    std::cout << "Raw modem status: " << result << std::endl;
-    std::cout << "Comparison result: " << (result == "connected") << std::endl;
-
     // Trim the new line at the end
     result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
-    std::cout << "Comparison result: " << (result == "connected") << std::endl;
 
     // Convert string to enum
     if (result.find("disabled") != std::string::npos) {
@@ -203,22 +199,6 @@ bool CellularManager::connectModem(int modemIndex) {
     }
 }
 
-void CellularManager::disconnectModem(const std::string& modemIdentifier) {
-    std::cout << "Disconnecting modem: " << modemIdentifier << std::endl;
-}
-
-bool CellularManager::isConnectionValidForCriticalData() const {
-    return true;
-}
-
-void CellularManager::maintainConnection() {
-    std::cout << "Maintaining connection..." << std::endl;
-}
-
-void CellularManager::logIssue(const std::string& issue) {
-    std::cerr << "Issue: " << issue << std::endl;
-}
-
 int CellularManager::getModemSignalStrength(int modemIndex) {
     std::string signalCommand = "mmcli --modem=" + std::to_string(modemIndex) + " --signal-get";
     FILE* fp = popen(signalCommand.c_str(), "r");
@@ -254,54 +234,41 @@ int CellularManager::getModemSignalStrength(int modemIndex) {
     return rssi;
 }
 
-int CellularManager::getModemBER(const std::string& modemIdentifier) const {
-    return 0;
+void CellularManager::resetHw() {
+    //stub
 }
 
-void CellularManager::registerUnsolicitedListener(const UnsolicitedCallback& callback) {
-    unsolicitedCallback = callback;
+int CellularManager::getMinRSSILevel() {
+    return minRSSILevel;
 }
 
-void CellularManager::unregisterUnsolicitedListener() {
-    unsolicitedCallback = nullptr;
-}
-
-void CellularManager::handleUnsolicitedIndication(const std::string& message) {
-    if (unsolicitedCallback) {
-        unsolicitedCallback(message);
-    }
-}
-
-CellularManager::State getConnectionStatus(CellularManager::State connectionStatus) {
-    return connectionStatus;
+int CellularManager::getMaxConnectTime() {
+    return maxConnectTime;
 }
 
 void CellularManager::parseCommandLine(int argc, char *argv[]) {
     int opt;
     static struct option long_options[] = {
         {"connect", required_argument, 0, 'c'},
+        {"minRSSI", required_argument, 0, 'r'},
         {0, 0, 0, 0}
     };
     int option_index = 0;
-    bool rssiLevelSet = false;
 
-    while ((opt = getopt_long(argc, argv, "c:", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "c:r:", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'c':
-                minRSSILevel = std::atoi(optarg);
-                rssiLevelSet = true;
+                maxConnectTime = std::stoi(optarg);
+                std::cout << "Max connect time set to: " << maxConnectTime << std::endl;
+                break;
+            case 'r':
+                minRSSILevel = std::stoi(optarg);
+                std::cout << "Minimum RSSI Level set to: " << minRSSILevel << std::endl;
                 break;
             default:
-                std::cerr << "Usage: " << argv[0] << " [-c minRSSILevel] [--connect=minRSSILevel]" << std::endl;
-                exit(EXIT_FAILURE);
+                std::cerr << "Invalid option" << std::endl;
+                break;
         }
     }
-
-    if (rssiLevelSet) {
-        std::cout << "Minimum RSSI level to connect: " << minRSSILevel << std::endl;
-    }
 }
 
-int CellularManager::getMinRSSILevel() {
-    return minRSSILevel;
-}

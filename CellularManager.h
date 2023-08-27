@@ -25,21 +25,15 @@ public:
     bool connectModem(int modemIndex);
     void disconnectModem(const std::string& modemIdentifier);
     void enableModem(int modemIndex);
-    bool isConnectionValidForCriticalData() const;
-    void maintainConnection();
-    void logIssue(const std::string& issue);
     State getState(int modemIndex);
-    State getConnectionStatus(State connectionStatus);
     int getModemSignalStrength(int modemIndex);
-    int getModemBER(const std::string& modemIdentifier) const;
+    void resetHw();
     
-    void registerUnsolicitedListener(const UnsolicitedCallback& callback);
-    void unregisterUnsolicitedListener();
-    
-    void handleUnsolicitedIndication(const std::string& message);
     int getMinRSSILevel();
+    int getMaxConnectTime();
 private:
     int minRSSILevel = -120; //basically means connect without min level
+    int maxConnectTime = 300;
     UnsolicitedCallback unsolicitedCallback;
     State connectionStatus;
 };
