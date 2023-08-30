@@ -1,4 +1,5 @@
 #include "CellularManager.h"
+#include "ObjectManager.h"
 #include <iostream> // For logging
 #include <sstream>
 #include <vector>
@@ -50,14 +51,15 @@ std::vector<int> CellularManager::getAvailableModems() {
     std::vector<int> modems;
 
     try {
-        auto msg = DBus::CallMessage("org.freedesktop.ModemManager1",
-            "/org/freedesktop/ModemManager1", "org.freedesktop.DBus.ObjectManager", "GetManagedObjects");
-
-        DBus::MessageIter args = conn.send_blocking(msg).reader();
-        while (args.has_next()) {
-            modems.push_back(args.get_int32());
-            std::cout << "Modem path: " << args.get_path() << std::endl;
-            ++args;
+        auto connection = sdbus::createSystemBusConnection();
+        auto managerProxy = std::make_unique<ObjectManagerProxy>(*connection, "org.freedesktop.ModemManager1", "/org/freedesktop/ModemManager1");
+        auto managed_objects = managerProxy->GetManagedObjects();
+        const std::string prefix = "/org/freedesktop/ModemManager1/Modem/";
+        for (const auto& p : managed_objects) {
+            if (p.first.starts_with(prefix)) {
+                const int id = std::stoi(p.first.substr(prefix.size()));
+                modems.push_back(id);
+            }
         }
 
         if (!modems.empty()) {
@@ -76,21 +78,18 @@ std::vector<int> CellularManager::getAvailableModems() {
     return modems;
 }
 
-std::vector<std::string> CellularManager::scanModems() {
-    std::vector<std::string> scannedModems;
+void CellularManager::scanModems() {
     try {
         auto msg = DBus::CallMessage("org.freedesktop.ModemManager1",
             "/org/freedesktop/ModemManager1", "org.freedesktop.ModemManager1", "ScanDevices");
 
-        DBus::MessageIter args = conn.send_blocking(msg).reader();
-        while (args.has_next()) {
-            scannedModems.push_back(args.get_string());
-            ++args;
+        auto resp = conn.send_blocking(msg);
+        if (!resp.is_error()) {
+            std::cout << "successfully requested to scan devices" << std::endl;
         }
     } catch (const DBus::Error& e) {
         std::cerr << "D-Bus error: " << e.what() << std::endl;
     }
-    return scannedModems;
 }
 
 CellularManager::State CellularManager::getState(int modemIndex) {

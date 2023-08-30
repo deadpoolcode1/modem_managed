@@ -25,7 +25,7 @@ public:
     std::string getModemApn(int modemIndex);
     std::string getModemIpType(int modemIndex);
     std::vector<int> getAvailableModems();
-    std::vector<std::string> scanModems();
+    void scanModems();
     bool connectModem(int modemIndex);
     void disconnectModem(const std::string& modemIdentifier);
     void enableModem(int modemIndex);
