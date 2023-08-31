@@ -93,42 +93,36 @@ void CellularManager::scanModems() {
 }
 
 CellularManager::State CellularManager::getState(int modemIndex) {
-    std::string cmd = "mmcli --modem=" + std::to_string(modemIndex) + " | grep -E '\\|\\s+state:' | awk '{print $NF}'";
-    char buffer[128];
-    std::string result = "";
-    FILE* pipe = popen(cmd.c_str(), "r");
-
-    if (!pipe) {
-        throw std::runtime_error("popen() failed!");
-    }
+    std::map<std::string, sdbus::Variant> result;
 
     try {
-        while (fgets(buffer, sizeof buffer, pipe) != NULL) {
-            result += buffer;
+        const std::string modem_path = "/org/freedesktop/ModemManager1/Modem/" + std::to_string(modemIndex);
+        auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", modem_path);
+        auto method = modemProxy->createMethodCall("org.freedesktop.ModemManager1.Modem.Simple", "GetStatus");
+        auto reply = modemProxy->callMethod(method);
+        reply >> result;
+    } catch (const sdbus::Error& e) {
+        std::cerr << "Failed to get modem state." << std::endl;
+        std::cerr << "D-Bus error: " << e.getMessage() << std::endl;
+    }
+
+    connectionStatus =  State::UNKNOWN;
+
+    if (result.find("state") != result.end()) {
+        const uint32_t state = result["state"].get<uint32_t>();
+
+        // Convert uint to enum
+        if (state == 3) {
+            connectionStatus = State::DISABLED;
+        } else if (state == 7) {
+            connectionStatus = State::SEARCHING;
+        } else if (state == 8) {
+            connectionStatus = State::REGISTERED;
+        } else if (state == 11) {
+            connectionStatus = State::CONNECTED;
         }
-    } catch (...) {
-        pclose(pipe);
-        throw;
     }
 
-    pclose(pipe);
-    // Trim the new line at the end
-    result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
-
-    // Convert string to enum
-    if (result.find("disabled") != std::string::npos) {
-        connectionStatus = State::DISABLED;
-    } else if (result.find("searching") != std::string::npos) {
-        connectionStatus = State::SEARCHING;
-    } else if (result.find("registered") != std::string::npos) {
-        connectionStatus = State::REGISTERED;
-    } else if (result.find("connected") != std::string::npos) {
-        connectionStatus = State::CONNECTED;
-    } else {
-        connectionStatus =  State::UNKNOWN;
-    }
-
-    std::cout << "Modem status:" <<  connectionStatus << std::endl;
     return connectionStatus;
 }
 
