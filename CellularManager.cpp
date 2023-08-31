@@ -133,30 +133,96 @@ CellularManager::State CellularManager::getState(int modemIndex) {
 }
 
 void CellularManager::enableModem(int modemIndex) {
-    std::string enableCmd = "mmcli --modem=" + std::to_string(modemIndex) + " --enable";
-    int result = std::system(enableCmd.c_str());
-    if (result == 0) {
+    try {
+        const std::string modem_path = "/org/freedesktop/ModemManager1/Modem/" + std::to_string(modemIndex);
+        auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", modem_path);
+        auto method = modemProxy->createMethodCall("org.freedesktop.ModemManager1.Modem", "Enable");
+        method << true;
+        auto reply = modemProxy->callMethod(method);
+
         std::cout << "Modem enabled successfully." << std::endl;
-    } else {
+    }
+    catch (const sdbus::Error& e) {
         std::cerr << "Failed to enable modem." << std::endl;
+        std::cerr << "D-Bus error: " << e.getMessage() << std::endl;
     }
 }
 
 bool CellularManager::connectModem(int modemIndex) {
     std::string apn = getModemApn(modemIndex);
     std::string ipType = getModemIpType(modemIndex);
-    
-    std::string connectCmd = "mmcli --modem=" + std::to_string(modemIndex) +
-                             " --simple-connect='apn=" + apn + ",ip-type=" + ipType + "'";
-    
-    int result = std::system(connectCmd.c_str());
-    if (result == 0) {
+
+    try {
+        const std::string modem_path = "/org/freedesktop/ModemManager1/Modem/" + std::to_string(modemIndex);
+        auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", modem_path);
+        auto method = modemProxy->createMethodCall("org.freedesktop.ModemManager1.Modem.Simple", "Connect");
+        std::map<std::string, sdbus::Variant> properties = {
+            {"apn", apn},
+            {"ip-type", ipType}
+        };
+        method << properties;
+        auto reply = modemProxy->callMethod(method);
+
         std::cout << "Modem connected successfully." << std::endl;
-        return true;
-    } else {
-        std::cerr << "Failed to connect modem." << std::endl;
-        return false;
     }
+    catch (const sdbus::Error& e) {
+        std::cerr << "Failed to connect modem." << std::endl;
+        std::cerr << "D-Bus error: " << e.getMessage() << std::endl;
+    }
+}
+
+void CellularManager::disconnectModem(const std::string& modemIdentifier) {
+    const std::string prefix = "/org/freedesktop/ModemManager1/Modem/";
+    const int idx = std::stoi(modemIdentifier.substr(prefix.size()));
+    disconnectModem(idx);
+}
+
+void CellularManager::disconnectModem(int modemIndex) {
+    try {
+        const std::string modem_path = "/org/freedesktop/ModemManager1/Modem/" + std::to_string(modemIndex);
+        auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", modem_path);
+
+        // Disconnect all modem bearers
+        for (const auto& b : listBearers(modemIndex)) {
+            auto method = modemProxy->createMethodCall("org.freedesktop.ModemManager1.Modem.Simple", "Disconnect");
+            method << b;
+            auto reply = modemProxy->callMethod(method);
+        }
+
+        std::cout << "Modem disconnected successfully." << std::endl;
+    }
+    catch (const sdbus::Error& e) {
+        std::cerr << "Failed to disconnect modem." << std::endl;
+        std::cerr << "D-Bus error: " << e.getMessage() << std::endl;
+    }
+}
+
+std::vector<sdbus::ObjectPath> CellularManager::listBearers(int modemIndex) {
+    std::vector<sdbus::ObjectPath> bearers;
+
+    try {
+        const std::string modem_path = "/org/freedesktop/ModemManager1/Modem/" + std::to_string(modemIndex);
+        auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", modem_path);
+        auto method = modemProxy->createMethodCall("org.freedesktop.ModemManager1.Modem", "ListBearers");
+        auto reply = modemProxy->callMethod(method);
+        reply >> bearers;
+
+        if (!bearers.empty()) {
+            std::cout << "Available bearer pathes: " << std::endl;
+            for (const auto& bearer : bearers) {
+                std::cout << bearer << std::endl;
+            }
+            std::cout << std::endl;
+        } else {
+            std::cout << "No available bearers." << std::endl;
+        }
+    }
+    catch (const sdbus::Error& e) {
+        std::cerr << "Failed to list bearers." << std::endl;
+        std::cerr << "D-Bus error: " << e.getMessage() << std::endl;
+    }
+
+    return bearers;
 }
 
 int CellularManager::getModemSignalStrength(int modemIndex) {

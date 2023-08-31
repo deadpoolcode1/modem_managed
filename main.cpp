@@ -13,6 +13,13 @@ int main(int argc, char *argv[]) {
     CellularManager cellularManager;
     cellularManager.parseCommandLine(argc, argv);
     std::vector<int> availableModems = cellularManager.getAvailableModems();
+    for (auto m : availableModems) {
+        cellularManager.enableModem(m);
+        cellularManager.listBearers(m);
+        cellularManager.connectModem(m);
+        // cellularManager.disconnectModem(m);
+        cellularManager.disconnectModem("/org/freedesktop/ModemManager1/Modem/" + std::to_string(m));
+    }
     int currentRSSI = -100; // Initialize to a suitable default value
     std::chrono::steady_clock::time_point searchStartTime; // Declare it here for SEARCHING state
     

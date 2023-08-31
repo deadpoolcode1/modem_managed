@@ -6,6 +6,7 @@
 #include <memory> 
 #include <functional>
 #include <dbus-c++/dbus.h>
+#include <sdbus-c++/sdbus-c++.h>
 
 class CellularManager {
 public:
@@ -28,8 +29,10 @@ public:
     void scanModems();
     bool connectModem(int modemIndex);
     void disconnectModem(const std::string& modemIdentifier);
+    void disconnectModem(int modemIndex);
     void enableModem(int modemIndex);
     State getState(int modemIndex);
+    std::vector<sdbus::ObjectPath> listBearers(int modemIndex);
     int getModemSignalStrength(int modemIndex);
     void resetHw();
     void assignIp(int modemIndex);
