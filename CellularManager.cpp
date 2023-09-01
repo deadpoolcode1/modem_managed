@@ -110,17 +110,8 @@ CellularManager::State CellularManager::getState(int modemIndex) {
 
     if (result.find("state") != result.end()) {
         const uint32_t state = result["state"].get<uint32_t>();
-
         // Convert uint to enum
-        if (state == 3) {
-            connectionStatus = State::DISABLED;
-        } else if (state == 7) {
-            connectionStatus = State::SEARCHING;
-        } else if (state == 8) {
-            connectionStatus = State::REGISTERED;
-        } else if (state == 11) {
-            connectionStatus = State::CONNECTED;
-        }
+        connectionStatus = static_cast<State>(state);
     }
 
     return connectionStatus;

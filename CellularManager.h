@@ -10,7 +10,21 @@
 
 class CellularManager {
 public:
-    enum State { DISABLED = 0, SEARCHING, REGISTERED, CONNECTED, UNKNOWN };
+    enum State {
+        FAILED = -1,
+        UNKNOWN = 0,
+        INITIALIZING,
+        LOCKED,
+        DISABLED,
+        DISABLING,
+        ENABLING,
+        ENABLED,
+        SEARCHING,
+        REGISTERED,
+        DISCONNECTING,
+        CONNECTING,
+        CONNECTED,
+    };
     static const std::string DEFAULT_APN;
     static const std::string DEFAULT_IPTYPE;
 
