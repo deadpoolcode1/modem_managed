@@ -15,7 +15,10 @@ static const char* MODEM_MANAGER_PATH = "org/freedesktop/ModemManager";
 static const char* MODEM_MANAGER_SERVICE = "org.freedesktop.ModemManager";
 static const char* MODEM_MANAGER_INTERFACE = "org.freedesktop.ModemManager";
 const std::string CellularManager::DEFAULT_APN = "rem8.com";
-const std::string CellularManager::DEFAULT_IPTYPE = "ipv4";
+const CellularManager::IpFamily CellularManager::DEFAULT_IPTYPE =
+    CellularManager::MM_BEARER_IP_FAMILY_IPV4;
+
+using Properties = std::map<std::string, sdbus::Variant>;
 
 DBus::BusDispatcher CellularManager::dispatcher;
 
@@ -29,22 +32,55 @@ CellularManager::~CellularManager()
 }
 
 std::string CellularManager::getModemApn(int modemIndex) {
-    std::string result = getModemInfo(modemIndex, "apn");
+    std::string result = getModemInfo(modemIndex, "apn").get<std::string>();
     return result.empty() ? DEFAULT_APN : result;
 }
 
-std::string CellularManager::getModemInfo(int modemIndex, const std::string& infoType) {
-    return executeCommand("mmcli --modem=" + std::to_string(modemIndex) + " | grep -E '\\|\\s+initial bearer " + infoType + ":' | awk '{print $NF}'");
+sdbus::Variant CellularManager::getModemInfo(int modemIndex, const std::string& infoType) {
+    sdbus::Variant res;
+
+    try {
+        for (auto path : listBearers(modemIndex)) {
+            const std::string modem_path = "/org/freedesktop/ModemManager1/Modem/" + std::to_string(modemIndex);
+            auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", path);
+            auto method = modemProxy->createMethodCall("org.freedesktop.DBus.Properties", "GetAll");
+            method << "org.freedesktop.ModemManager1.Bearer";
+            auto reply = modemProxy->callMethod(method);
+
+            Properties properties;
+            reply >> properties;
+            const auto bearer_properties = properties["Properties"].get<Properties>();
+            if (bearer_properties.find(infoType) != bearer_properties.end()) {
+                res = bearer_properties.at(infoType);
+                break;
+            }
+        }
+    } catch (const sdbus::Error& e) {
+        std::cerr << "Failed to get modem info for modem index " << modemIndex << std::endl;
+        std::cerr << "D-Bus error: " << e.getMessage() << std::endl;
+    }
+
+    return res;
 }
 
-std::string CellularManager::getModemIpType(int modemIndex) {
-    std::string result = getModemInfo(modemIndex, "ip type");
-    return result.empty() ? DEFAULT_IPTYPE : result;
+CellularManager::IpFamily CellularManager::getModemIpType(int modemIndex) {
+    sdbus::Variant t = getModemInfo(modemIndex, "ip-type");
+    return t.isEmpty() ? DEFAULT_IPTYPE : static_cast<IpFamily>(t.get<uint32_t>());
 }
 
 void CellularManager::setupSignalChecking(int modemIndex) {
-    int ret = std::system(("mmcli --modem=" + std::to_string(modemIndex) + " --signal-setup=5").c_str());
-    std::cout << (ret ? "Failed" : "Successfully") << " set up signal checking for modem index " << modemIndex << std::endl;
+    try {
+        const std::string modem_path = "/org/freedesktop/ModemManager1/Modem/" + std::to_string(modemIndex);
+        auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", modem_path);
+        auto method = modemProxy->createMethodCall("org.freedesktop.ModemManager1.Modem.Signal", "Setup");
+        const uint32_t signal_value = 5;
+        method << signal_value;
+        auto reply = modemProxy->callMethod(method);
+        std::cout << "Successfully set up signal checking for modem index " << modemIndex << std::endl;
+    } catch (const sdbus::Error& e) {
+        std::cerr << "Failed to set up signal checking for modem index " << modemIndex << std::endl;
+        std::cerr << "D-Bus error: " << e.getMessage() << std::endl;
+    }
 }
 
 std::vector<int> CellularManager::getAvailableModems() {
@@ -135,13 +171,13 @@ void CellularManager::enableModem(int modemIndex) {
 
 bool CellularManager::connectModem(int modemIndex) {
     std::string apn = getModemApn(modemIndex);
-    std::string ipType = getModemIpType(modemIndex);
+    uint32_t ipType = getModemIpType(modemIndex);
 
     try {
         const std::string modem_path = "/org/freedesktop/ModemManager1/Modem/" + std::to_string(modemIndex);
         auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", modem_path);
         auto method = modemProxy->createMethodCall("org.freedesktop.ModemManager1.Modem.Simple", "Connect");
-        std::map<std::string, sdbus::Variant> properties = {
+        Properties properties = {
             {"apn", apn},
             {"ip-type", ipType}
         };
@@ -211,33 +247,29 @@ std::vector<sdbus::ObjectPath> CellularManager::listBearers(int modemIndex) {
 }
 
 int CellularManager::getModemSignalStrength(int modemIndex) {
-    std::string signalCommand = "mmcli --modem=" + std::to_string(modemIndex) + " --signal-get";
-    FILE* fp = popen(signalCommand.c_str(), "r");
+    double rssi = 0;
     
-    if (fp == nullptr) {
-        std::cerr << "Failed to run command" << std::endl;
-        return -1;  // Indicating an error
+    try {
+        const std::string modem_path = "/org/freedesktop/ModemManager1/Modem/" + std::to_string(modemIndex);
+        auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", modem_path);
+        auto method = modemProxy->createMethodCall("org.freedesktop.DBus.Properties", "GetAll");
+        method << "org.freedesktop.ModemManager1.Modem.Signal";
+        auto reply = modemProxy->callMethod(method);
+        Properties properties;
+        reply >> properties;
+        for (const auto& p : properties) {
+            if (p.second.containsValueOfType<Properties>()) {
+                auto type_propertires = p.second.get<Properties>();
+                if (type_propertires.find("rssi") != type_propertires.end()) {
+                    rssi = type_propertires.at("rssi");
+                    break;
+                }
+            }
+        }
+    } catch (const sdbus::Error& e) {
+        std::cerr << "Failed to getModemSignalStrength for modem index " << modemIndex << std::endl;
+        std::cerr << "D-Bus error: " << e.getMessage() << std::endl;
     }
-    
-    char buffer[128];
-    std::string signalInfo = "";
-    while (fgets(buffer, sizeof(buffer)-1, fp) != nullptr) {
-        signalInfo += buffer;
-    }
-    
-    pclose(fp);
-    
-    // Parsing the output to find the signal strength
-    std::string keyword = "rssi:";
-    auto pos = signalInfo.find(keyword);
-    if (pos == std::string::npos) {
-        std::cout << "Could not find RSSI information" << std::endl;
-        return -1;
-    }
-    
-    std::stringstream ss(signalInfo.substr(pos + keyword.size()));
-    int rssi;
-    ss >> rssi;
 
     // Print the RSSI value
     std::cout << "Modem signal strength: " << rssi << " dBm" << std::endl;

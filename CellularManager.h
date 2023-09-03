@@ -25,8 +25,17 @@ public:
         CONNECTING,
         CONNECTED,
     };
+
+    enum IpFamily {
+        MM_BEARER_IP_FAMILY_NONE    = 0,
+        MM_BEARER_IP_FAMILY_IPV4    = 1 << 0,
+        MM_BEARER_IP_FAMILY_IPV6    = 1 << 1,
+        MM_BEARER_IP_FAMILY_IPV4V6  = 1 << 2,
+        MM_BEARER_IP_FAMILY_ANY     = 0xFFFFFFFF
+    };
+
     static const std::string DEFAULT_APN;
-    static const std::string DEFAULT_IPTYPE;
+    static const IpFamily DEFAULT_IPTYPE;
 
     using UnsolicitedCallback = std::function<void(const std::string& message)>;
 
@@ -38,7 +47,7 @@ public:
     void parseCommandLine(int argc, char *argv[]);
     void setupSignalChecking(int modemIndex);
     std::string getModemApn(int modemIndex);
-    std::string getModemIpType(int modemIndex);
+    IpFamily getModemIpType(int modemIndex);
     std::vector<int> getAvailableModems();
     void scanModems();
     bool connectModem(int modemIndex);
@@ -51,7 +60,7 @@ public:
     void resetHw();
     void assignIp(int modemIndex);
     std::string executeCommand(const std::string& cmd);
-    std::string getModemInfo(int modemIndex, const std::string& infoType); 
+    sdbus::Variant getModemInfo(int modemIndex, const std::string& infoType);
     int getMinRSSILevel();
     int getMaxConnectTime();
 private:
