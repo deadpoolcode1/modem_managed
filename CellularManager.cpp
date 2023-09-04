@@ -106,8 +106,8 @@ std::vector<int> CellularManager::getAvailableModems() {
         } else {
             std::cout << "No available modems." << std::endl;
         }
-    } catch (const DBus::Error& e) {
-        std::cerr << "D-Bus error: " << e.what() << std::endl;
+    } catch (const sdbus::Error& e) {
+        std::cerr << "D-Bus error: " << e.getMessage() << std::endl;
     }
 
     return modems;
@@ -115,15 +115,12 @@ std::vector<int> CellularManager::getAvailableModems() {
 
 void CellularManager::scanModems() {
     try {
-        auto msg = DBus::CallMessage("org.freedesktop.ModemManager1",
-            "/org/freedesktop/ModemManager1", "org.freedesktop.ModemManager1", "ScanDevices");
-
-        auto resp = conn.send_blocking(msg);
-        if (!resp.is_error()) {
-            std::cout << "successfully requested to scan devices" << std::endl;
-        }
-    } catch (const DBus::Error& e) {
-        std::cerr << "D-Bus error: " << e.what() << std::endl;
+        auto modemProxy = sdbus::createProxy(sdbus::createSystemBusConnection(), "org.freedesktop.ModemManager1", "/org/freedesktop/ModemManager1");
+        auto method = modemProxy->createMethodCall("org.freedesktop.ModemManager1", "ScanDevices");
+        modemProxy->callMethod(method);
+        std::cout << "successfully requested to scan devices" << std::endl;
+    } catch (const sdbus::Error& e) {
+        std::cerr << "D-Bus error: " << e.getMessage() << std::endl;
     }
 }
 
