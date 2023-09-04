@@ -32,8 +32,8 @@ CellularManager::~CellularManager()
 }
 
 std::string CellularManager::getModemApn(int modemIndex) {
-    std::string result = getModemInfo(modemIndex, "apn").get<std::string>();
-    return result.empty() ? DEFAULT_APN : result;
+    sdbus::Variant res = getModemInfo(modemIndex, "apn");
+    return res.isEmpty() ? DEFAULT_APN : res.get<std::string>();
 }
 
 sdbus::Variant CellularManager::getModemInfo(int modemIndex, const std::string& infoType) {
@@ -41,7 +41,6 @@ sdbus::Variant CellularManager::getModemInfo(int modemIndex, const std::string& 
 
     try {
         for (auto path : listBearers(modemIndex)) {
-            const std::string modem_path = "/org/freedesktop/ModemManager1/Modem/" + std::to_string(modemIndex);
             auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", path);
             auto method = modemProxy->createMethodCall("org.freedesktop.DBus.Properties", "GetAll");
             method << "org.freedesktop.ModemManager1.Bearer";
@@ -64,8 +63,8 @@ sdbus::Variant CellularManager::getModemInfo(int modemIndex, const std::string& 
 }
 
 CellularManager::IpFamily CellularManager::getModemIpType(int modemIndex) {
-    sdbus::Variant t = getModemInfo(modemIndex, "ip-type");
-    return t.isEmpty() ? DEFAULT_IPTYPE : static_cast<IpFamily>(t.get<uint32_t>());
+    sdbus::Variant res = getModemInfo(modemIndex, "ip-type");
+    return res.isEmpty() ? DEFAULT_IPTYPE : static_cast<IpFamily>(res.get<uint32_t>());
 }
 
 void CellularManager::setupSignalChecking(int modemIndex) {
@@ -170,10 +169,9 @@ void CellularManager::enableModem(int modemIndex) {
 }
 
 bool CellularManager::connectModem(int modemIndex) {
-    std::string apn = getModemApn(modemIndex);
-    uint32_t ipType = getModemIpType(modemIndex);
-
     try {
+        std::string apn = getModemApn(modemIndex);
+        uint32_t ipType = getModemIpType(modemIndex);
         const std::string modem_path = "/org/freedesktop/ModemManager1/Modem/" + std::to_string(modemIndex);
         auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", modem_path);
         auto method = modemProxy->createMethodCall("org.freedesktop.ModemManager1.Modem.Simple", "Connect");
@@ -189,7 +187,10 @@ bool CellularManager::connectModem(int modemIndex) {
     catch (const sdbus::Error& e) {
         std::cerr << "Failed to connect modem." << std::endl;
         std::cerr << "D-Bus error: " << e.getMessage() << std::endl;
+        return false;
     }
+
+    return true;
 }
 
 void CellularManager::disconnectModem(const std::string& modemIdentifier) {
@@ -278,31 +279,68 @@ int CellularManager::getModemSignalStrength(int modemIndex) {
 }
 
 void CellularManager::assignIp(int modemIndex) {
-    auto runCmd = [this, modemIndex](const std::string& pattern) {
-        std::string cmd = "mmcli --modem=" + std::to_string(modemIndex) + pattern;
-        return executeCommand(cmd);
-    };
+    Properties ipConfig;
+    std::string ipInterface;
+    std::string ipAddress;
+    std::string ipGateway;
+    uint32_t ipMtu;
+    std::vector<std::string> dnsArray;
 
-    std::string bearerIndex = runCmd(" | grep -E 'Bearer\\s+\\|\\s+paths:' | awk -F'/' '{print $NF}'");
-    std::string ipInterface = runCmd(" --bearer=" + bearerIndex + " | grep -E '\\|\\s+interface:' | awk '{print $NF}'");
-    std::string ipAddress   = runCmd(" --bearer=" + bearerIndex + " | grep -E '\\|\\s+address:' | awk '{print $NF}'");
-    std::string ipGateway   = runCmd(" --bearer=" + bearerIndex + " | grep -E '\\|\\s+gateway:' | awk '{print $NF}'");
-    std::string ipMtu       = runCmd(" --bearer=" + bearerIndex + " | grep -E '\\|\\s+mtu:' | awk '{print $NF}'");
-    std::string dnsString   = runCmd(" --bearer=" + bearerIndex + " | grep -E '\\|\\s+dns:'");
+    try {
+        for (auto path : listBearers(modemIndex)) {
+            auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", path);
+            auto method = modemProxy->createMethodCall("org.freedesktop.DBus.Properties", "GetAll");
+            method << "org.freedesktop.ModemManager1.Bearer";
+            auto reply = modemProxy->callMethod(method);
 
-    std::vector<std::string> ipDnsArray;
-    std::regex re("[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}");
-    for (std::sregex_iterator it = std::sregex_iterator(dnsString.begin(), dnsString.end(), re); it != std::sregex_iterator(); ++it) {
-        ipDnsArray.push_back(it->str());
+            Properties properties;
+            reply >> properties;
+
+            ipInterface = properties["Interface"].get<std::string>();
+            if (properties.find("Ip4Config") != properties.end() && !properties["Ip4Config"].isEmpty()) {
+                ipConfig = properties["Ip4Config"].get<Properties>();
+                break;
+            } else if (properties.find("Ip6Config") != properties.end() && !properties["Ip6Config"].isEmpty()) {
+                ipConfig = properties["Ip6Config"].get<Properties>();
+                break;
+            }
+        }
+
+        if (ipConfig.find("adress") != ipConfig.end() && !ipConfig.at("adress").isEmpty()) {
+            ipAddress = ipConfig.at("adress").get<std::string>();
+        }
+
+        if (ipConfig.find("gateway") != ipConfig.end() && !ipConfig.at("gateway").isEmpty()) {
+            ipAddress = ipConfig.at("gateway").get<std::string>();
+        }
+
+        if (ipConfig.find("dns1") != ipConfig.end() && !ipConfig.at("dns1").isEmpty()) {
+            dnsArray.push_back(ipConfig.at("dns1"));
+        }
+
+        if (ipConfig.find("dns2") != ipConfig.end() && !ipConfig.at("dns2").isEmpty()) {
+            dnsArray.push_back(ipConfig.at("dns2"));
+        }
+
+        if (ipConfig.find("dns3") != ipConfig.end() && !ipConfig.at("dns3").isEmpty()) {
+            dnsArray.push_back(ipConfig.at("dns3"));
+        }
+
+        if (ipConfig.find("mtu") != ipConfig.end()) {
+            ipMtu = ipConfig.at("mtu");
+        }
+    } catch (const sdbus::Error& e) {
+        std::cerr << "Failed to get IP info for modem index " << modemIndex << std::endl;
+        std::cerr << "D-Bus error: " << e.getMessage() << std::endl;
     }
 
     std::system(("ip link set " + ipInterface + " up").c_str());
     std::system(("ip addr add " + ipAddress + "/32 dev " + ipInterface).c_str());
     std::system(("ip link set dev " + ipInterface + " arp off").c_str());
-    std::system(("ip link set dev " + ipInterface + " mtu " + ipMtu).c_str());
+    std::system(("ip link set dev " + ipInterface + " mtu " + std::to_string(ipMtu)).c_str());
     std::system(("ip route add default dev " + ipInterface + " metric 200").c_str());
 
-    for (const auto& dns : ipDnsArray) {
+    for (const auto& dns : dnsArray) {
         std::system(("sh -c \"echo 'nameserver " + dns + "' >> /etc/resolv.conf\"").c_str());
     }
 }
