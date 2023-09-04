@@ -5,7 +5,6 @@
 #include <vector>
 #include <memory> 
 #include <functional>
-#include <dbus-c++/dbus.h>
 #include <sdbus-c++/sdbus-c++.h>
 
 class CellularManager {
@@ -39,8 +38,6 @@ public:
 
     using UnsolicitedCallback = std::function<void(const std::string& message)>;
 
-    static DBus::BusDispatcher dispatcher;
-
     CellularManager();
     ~CellularManager();
 
@@ -56,6 +53,7 @@ public:
     void enableModem(int modemIndex);
     State getState(int modemIndex);
     std::vector<sdbus::ObjectPath> listBearers(int modemIndex);
+    std::vector<sdbus::ObjectPath> getBearers(int modemIndex);
     int getModemSignalStrength(int modemIndex);
     void resetHw();
     void assignIp(int modemIndex);
@@ -68,7 +66,6 @@ private:
     int maxConnectTime = 300;
     UnsolicitedCallback unsolicitedCallback;
     State connectionStatus;
-    DBus::Connection conn;
 };
 
 #endif

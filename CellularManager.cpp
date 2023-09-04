@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <getopt.h>
 #include <cstdlib>
-#include <dbus-c++/dispatcher.h>
 
 static const char* MODEM_MANAGER_PATH = "org/freedesktop/ModemManager";
 static const char* MODEM_MANAGER_SERVICE = "org.freedesktop.ModemManager1";
@@ -20,11 +19,8 @@ const CellularManager::IpFamily CellularManager::DEFAULT_IPTYPE =
 
 using Properties = std::map<std::string, sdbus::Variant>;
 
-DBus::BusDispatcher CellularManager::dispatcher;
-
-CellularManager::CellularManager() : conn(DBus::Connection::SystemBus())
+CellularManager::CellularManager()
 {
-    DBus::default_dispatcher = &dispatcher;
 }
 
 CellularManager::~CellularManager()
