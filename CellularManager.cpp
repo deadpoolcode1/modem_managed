@@ -12,7 +12,7 @@
 #include <dbus-c++/dispatcher.h>
 
 static const char* MODEM_MANAGER_PATH = "org/freedesktop/ModemManager";
-static const char* MODEM_MANAGER_SERVICE = "org.freedesktop.ModemManager";
+static const char* MODEM_MANAGER_SERVICE = "org.freedesktop.ModemManager1";
 static const char* MODEM_MANAGER_INTERFACE = "org.freedesktop.ModemManager";
 const std::string CellularManager::DEFAULT_APN = "rem8.com";
 const CellularManager::IpFamily CellularManager::DEFAULT_IPTYPE =
@@ -41,7 +41,7 @@ sdbus::Variant CellularManager::getModemInfo(int modemIndex, const std::string& 
 
     try {
         for (auto path : getBearers(modemIndex)) {
-            auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", path);
+            auto modemProxy = sdbus::createProxy(MODEM_MANAGER_SERVICE, path);
             auto method = modemProxy->createMethodCall("org.freedesktop.DBus.Properties", "GetAll");
             method << "org.freedesktop.ModemManager1.Bearer";
             auto reply = modemProxy->callMethod(method);
@@ -70,7 +70,7 @@ CellularManager::IpFamily CellularManager::getModemIpType(int modemIndex) {
 void CellularManager::setupSignalChecking(int modemIndex) {
     try {
         const std::string modem_path = "/org/freedesktop/ModemManager1/Modem/" + std::to_string(modemIndex);
-        auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", modem_path);
+        auto modemProxy = sdbus::createProxy(MODEM_MANAGER_SERVICE, modem_path);
         auto method = modemProxy->createMethodCall("org.freedesktop.ModemManager1.Modem.Signal", "Setup");
         const uint32_t signal_value = 5;
         method << signal_value;
@@ -87,7 +87,7 @@ std::vector<int> CellularManager::getAvailableModems() {
 
     try {
         auto connection = sdbus::createSystemBusConnection();
-        auto managerProxy = std::make_unique<ObjectManagerProxy>(*connection, "org.freedesktop.ModemManager1", "/org/freedesktop/ModemManager1");
+        auto managerProxy = std::make_unique<ObjectManagerProxy>(*connection, MODEM_MANAGER_SERVICE, "/org/freedesktop/ModemManager1");
         auto managed_objects = managerProxy->GetManagedObjects();
         const std::string prefix = "/org/freedesktop/ModemManager1/Modem/";
         for (const auto& p : managed_objects) {
@@ -115,7 +115,7 @@ std::vector<int> CellularManager::getAvailableModems() {
 
 void CellularManager::scanModems() {
     try {
-        auto modemProxy = sdbus::createProxy(sdbus::createSystemBusConnection(), "org.freedesktop.ModemManager1", "/org/freedesktop/ModemManager1");
+        auto modemProxy = sdbus::createProxy(sdbus::createSystemBusConnection(), MODEM_MANAGER_SERVICE, "/org/freedesktop/ModemManager1");
         auto method = modemProxy->createMethodCall("org.freedesktop.ModemManager1", "ScanDevices");
         modemProxy->callMethod(method);
         std::cout << "successfully requested to scan devices" << std::endl;
@@ -129,7 +129,7 @@ CellularManager::State CellularManager::getState(int modemIndex) {
 
     try {
         const std::string modem_path = "/org/freedesktop/ModemManager1/Modem/" + std::to_string(modemIndex);
-        auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", modem_path);
+        auto modemProxy = sdbus::createProxy(MODEM_MANAGER_SERVICE, modem_path);
         auto method = modemProxy->createMethodCall("org.freedesktop.ModemManager1.Modem.Simple", "GetStatus");
         auto reply = modemProxy->callMethod(method);
         reply >> result;
@@ -152,7 +152,7 @@ CellularManager::State CellularManager::getState(int modemIndex) {
 void CellularManager::enableModem(int modemIndex) {
     try {
         const std::string modem_path = "/org/freedesktop/ModemManager1/Modem/" + std::to_string(modemIndex);
-        auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", modem_path);
+        auto modemProxy = sdbus::createProxy(MODEM_MANAGER_SERVICE, modem_path);
         auto method = modemProxy->createMethodCall("org.freedesktop.ModemManager1.Modem", "Enable");
         method << true;
         auto reply = modemProxy->callMethod(method);
@@ -170,7 +170,7 @@ bool CellularManager::connectModem(int modemIndex) {
         std::string apn = getModemApn(modemIndex);
         uint32_t ipType = getModemIpType(modemIndex);
         const std::string modem_path = "/org/freedesktop/ModemManager1/Modem/" + std::to_string(modemIndex);
-        auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", modem_path);
+        auto modemProxy = sdbus::createProxy(MODEM_MANAGER_SERVICE, modem_path);
         auto method = modemProxy->createMethodCall("org.freedesktop.ModemManager1.Modem.Simple", "Connect");
         Properties properties = {
             {"apn", apn},
@@ -199,7 +199,7 @@ void CellularManager::disconnectModem(const std::string& modemIdentifier) {
 void CellularManager::disconnectModem(int modemIndex) {
     try {
         const std::string modem_path = "/org/freedesktop/ModemManager1/Modem/" + std::to_string(modemIndex);
-        auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", modem_path);
+        auto modemProxy = sdbus::createProxy(MODEM_MANAGER_SERVICE, modem_path);
 
         // Disconnect all modem bearers
         for (const auto& b : getBearers(modemIndex)) {
@@ -237,7 +237,7 @@ std::vector<sdbus::ObjectPath> CellularManager::getBearers(int modemIndex) {
 
     try {
         const std::string modem_path = "/org/freedesktop/ModemManager1/Modem/" + std::to_string(modemIndex);
-        auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", modem_path);
+        auto modemProxy = sdbus::createProxy(MODEM_MANAGER_SERVICE, modem_path);
         auto method = modemProxy->createMethodCall("org.freedesktop.ModemManager1.Modem", "ListBearers");
         auto reply = modemProxy->callMethod(method);
         reply >> bearers;
@@ -254,7 +254,7 @@ int CellularManager::getModemSignalStrength(int modemIndex) {
     
     try {
         const std::string modem_path = "/org/freedesktop/ModemManager1/Modem/" + std::to_string(modemIndex);
-        auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", modem_path);
+        auto modemProxy = sdbus::createProxy(MODEM_MANAGER_SERVICE, modem_path);
         auto method = modemProxy->createMethodCall("org.freedesktop.DBus.Properties", "GetAll");
         method << "org.freedesktop.ModemManager1.Modem.Signal";
         auto reply = modemProxy->callMethod(method);
@@ -290,7 +290,7 @@ void CellularManager::assignIp(int modemIndex) {
 
     try {
         for (auto path : getBearers(modemIndex)) {
-            auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", path);
+            auto modemProxy = sdbus::createProxy(MODEM_MANAGER_SERVICE, path);
             auto method = modemProxy->createMethodCall("org.freedesktop.DBus.Properties", "GetAll");
             method << "org.freedesktop.ModemManager1.Bearer";
             auto reply = modemProxy->callMethod(method);
