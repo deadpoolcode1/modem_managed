@@ -40,7 +40,7 @@ sdbus::Variant CellularManager::getModemInfo(int modemIndex, const std::string& 
     sdbus::Variant res;
 
     try {
-        for (auto path : listBearers(modemIndex)) {
+        for (auto path : getBearers(modemIndex)) {
             auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", path);
             auto method = modemProxy->createMethodCall("org.freedesktop.DBus.Properties", "GetAll");
             method << "org.freedesktop.ModemManager1.Bearer";
@@ -202,7 +202,7 @@ void CellularManager::disconnectModem(int modemIndex) {
         auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", modem_path);
 
         // Disconnect all modem bearers
-        for (const auto& b : listBearers(modemIndex)) {
+        for (const auto& b : getBearers(modemIndex)) {
             auto method = modemProxy->createMethodCall("org.freedesktop.ModemManager1.Modem.Simple", "Disconnect");
             method << b;
             auto reply = modemProxy->callMethod(method);
@@ -217,6 +217,22 @@ void CellularManager::disconnectModem(int modemIndex) {
 }
 
 std::vector<sdbus::ObjectPath> CellularManager::listBearers(int modemIndex) {
+    std::vector<sdbus::ObjectPath> bearers = getBearers(modemIndex);
+
+    if (!bearers.empty()) {
+        std::cout << "Available bearer pathes: " << std::endl;
+        for (const auto& bearer : bearers) {
+            std::cout << bearer << std::endl;
+        }
+        std::cout << std::endl;
+    } else {
+        std::cout << "No available bearers." << std::endl;
+    }
+
+    return bearers;
+}
+
+std::vector<sdbus::ObjectPath> CellularManager::getBearers(int modemIndex) {
     std::vector<sdbus::ObjectPath> bearers;
 
     try {
@@ -225,19 +241,8 @@ std::vector<sdbus::ObjectPath> CellularManager::listBearers(int modemIndex) {
         auto method = modemProxy->createMethodCall("org.freedesktop.ModemManager1.Modem", "ListBearers");
         auto reply = modemProxy->callMethod(method);
         reply >> bearers;
-
-        if (!bearers.empty()) {
-            std::cout << "Available bearer pathes: " << std::endl;
-            for (const auto& bearer : bearers) {
-                std::cout << bearer << std::endl;
-            }
-            std::cout << std::endl;
-        } else {
-            std::cout << "No available bearers." << std::endl;
-        }
-    }
-    catch (const sdbus::Error& e) {
-        std::cerr << "Failed to list bearers." << std::endl;
+    } catch (const sdbus::Error& e) {
+        std::cerr << "Failed to get bearers." << std::endl;
         std::cerr << "D-Bus error: " << e.getMessage() << std::endl;
     }
 
@@ -284,7 +289,7 @@ void CellularManager::assignIp(int modemIndex) {
     std::vector<std::string> dnsArray;
 
     try {
-        for (auto path : listBearers(modemIndex)) {
+        for (auto path : getBearers(modemIndex)) {
             auto modemProxy = sdbus::createProxy("org.freedesktop.ModemManager1", path);
             auto method = modemProxy->createMethodCall("org.freedesktop.DBus.Properties", "GetAll");
             method << "org.freedesktop.ModemManager1.Bearer";
