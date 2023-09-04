@@ -9,4 +9,4 @@ set(SOURCES
     main.cpp 
 )
 
-add_executable(modem_host ${SOURCES})
+add_executable(modem_managed ${SOURCES})
