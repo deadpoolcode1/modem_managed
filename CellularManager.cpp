@@ -87,7 +87,7 @@ std::vector<int> CellularManager::getAvailableModems() {
         auto managed_objects = managerProxy->GetManagedObjects();
         const std::string prefix = "/org/freedesktop/ModemManager1/Modem/";
         for (const auto& p : managed_objects) {
-            if (p.first.starts_with(prefix)) {
+            if (p.first.find(prefix) == 0) {
                 const int id = std::stoi(p.first.substr(prefix.size()));
                 modems.push_back(id);
             }
