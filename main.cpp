@@ -9,20 +9,28 @@
 int main(int argc, char *argv[]) {
     CellularManager cellularManager;
     cellularManager.parseCommandLine(argc, argv);
-    std::vector<int> availableModems = cellularManager.getAvailableModems();
-    int currentRSSI = -100; // Initialize to a suitable default value
-    std::chrono::steady_clock::time_point searchStartTime; // Declare it here for SEARCHING state
     
-    CellularManager::State previousState = CellularManager::UNKNOWN;  // Add a variable to keep track of the previous state
+    std::vector<int> availableModems;
+    int currentRSSI = -100;
+    std::chrono::steady_clock::time_point searchStartTime; 
     
-    if (!availableModems.empty()) {
-        while (true) {
-            int modem = availableModems[0]; // Or however you decide which modem to use
+    CellularManager::State previousState = CellularManager::UNKNOWN;  
+    
+    while (true) {
+        availableModems = cellularManager.getAvailableModems();
+        
+        if (availableModems.empty()) {
+            std::cout << "No modems found. Rescanning in 5 seconds..." << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            continue; 
+        }
+        
+        while (!availableModems.empty()) {
+            int modem = availableModems[0]; 
             CellularManager::State currentState = cellularManager.getState(modem);
             currentRSSI = cellularManager.getModemSignalStrength(modem);
             
             if (currentState == CellularManager::CONNECTED && previousState != CellularManager::CONNECTED) {
-                // Call assignIP only when just changing state to CONNECTED
                 cellularManager.assignIp(modem);
             }
 
@@ -30,7 +38,6 @@ int main(int argc, char *argv[]) {
                 Logic::resetUnknownStateCounter();
             }
             
-            // Switch-case block
             switch (currentState) {
                 case CellularManager::DISABLED:
                     Logic::handleDisabledState(cellularManager, modem);
@@ -49,14 +56,13 @@ int main(int argc, char *argv[]) {
                     break;
                     
                 case CellularManager::UNKNOWN:
-                    // Handle UNKNOWN state, if necessary.
                     break;
             }
-
-            // Update the previous state to the current state for the next iteration
-            previousState = currentState;
             
-            // Sleep before checking the state again
+            previousState = currentState;
+
+            availableModems = cellularManager.getAvailableModems();
+            
             std::this_thread::sleep_for(std::chrono::seconds(10));
         }
     }
