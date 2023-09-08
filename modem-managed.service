@@ -1,0 +1,12 @@
+[Unit]
+Description=Modem Managed Application
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/modem_managed
+Restart=always
+User=root
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
