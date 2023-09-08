@@ -112,15 +112,13 @@ CellularManager::State CellularManager::getState(int modemIndex) {
     } else {
         connectionStatus =  State::UNKNOWN;
     }
-
-    std::cout << "Modem status:" <<  connectionStatus << std::endl;
     return connectionStatus;
 }
 
 void CellularManager::enableModem(int modemIndex) {
     std::string enableCmd = "mmcli --modem=" + std::to_string(modemIndex) + " --enable";
     int result = std::system(enableCmd.c_str());
-    
+
     if (result == 0) {
         syslog(LOG_INFO, "Modem enabled successfully."); // INFO level for successful operations
     } else {
