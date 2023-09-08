@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <getopt.h>
 #include <cstdlib>
+#include <syslog.h>
 
 static const char* MODEM_MANAGER_PATH = "org/freedesktop/ModemManager";
 static const char* MODEM_MANAGER_SERVICE = "org.freedesktop.ModemManager";
@@ -17,10 +18,12 @@ const std::string CellularManager::DEFAULT_IPTYPE = "ipv4";
 
 CellularManager::CellularManager() 
 {
+    openlog("modem", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
 }
 
 CellularManager::~CellularManager()
 {
+    closelog();
 }
 
 std::string CellularManager::getModemApn(int modemIndex) {
@@ -39,7 +42,10 @@ std::string CellularManager::getModemIpType(int modemIndex) {
 
 void CellularManager::setupSignalChecking(int modemIndex) {
     int ret = std::system(("mmcli --modem=" + std::to_string(modemIndex) + " --signal-setup=5").c_str());
-    std::cout << (ret ? "Failed" : "Successfully") << " set up signal checking for modem index " << modemIndex << std::endl;
+    syslog(LOG_INFO, "Successfully set up signal checking for modem index %d", modemIndex);
+    if (ret) {
+        syslog(LOG_ERR, "Failed to set up signal checking for modem index %d", modemIndex);
+    }
 }
 
 std::vector<int> CellularManager::getAvailableModems() {
@@ -47,7 +53,7 @@ std::vector<int> CellularManager::getAvailableModems() {
     
     FILE *fp = popen("mmcli -L", "r");
     if (fp == nullptr) {
-        std::cerr << "Failed to run mmcli -L" << std::endl;
+        syslog(LOG_ERR, "Failed to run mmcli -L");
         return modems;
     }
     
@@ -63,13 +69,9 @@ std::vector<int> CellularManager::getAvailableModems() {
     }
     
     if (!modems.empty()) {
-        std::cout << "Available modem indexes: ";
-        for (const auto& modemIndex : modems) {
-            std::cout << modemIndex << ' ';
-        }
-        std::cout << std::endl;
+        syslog(LOG_INFO, "Available modem indexes found."); 
     } else {
-        std::cout << "No available modems." << std::endl;
+        syslog(LOG_WARNING, "No available modems."); 
     }
 
     return modems;
@@ -118,10 +120,11 @@ CellularManager::State CellularManager::getState(int modemIndex) {
 void CellularManager::enableModem(int modemIndex) {
     std::string enableCmd = "mmcli --modem=" + std::to_string(modemIndex) + " --enable";
     int result = std::system(enableCmd.c_str());
+    
     if (result == 0) {
-        std::cout << "Modem enabled successfully." << std::endl;
+        syslog(LOG_INFO, "Modem enabled successfully."); // INFO level for successful operations
     } else {
-        std::cerr << "Failed to enable modem." << std::endl;
+        syslog(LOG_ERR, "Failed to enable modem."); // ERR level for failures
     }
 }
 
@@ -134,12 +137,12 @@ bool CellularManager::connectModem(int modemIndex) {
     
     int result = std::system(connectCmd.c_str());
     if (result == 0) {
-        std::cout << "Modem connected successfully." << std::endl;
-        return true;
+        syslog(LOG_INFO, "Modem connected successfully."); // INFO level for successful operations
     } else {
-        std::cerr << "Failed to connect modem." << std::endl;
-        return false;
+        syslog(LOG_ERR, "Failed to connect modem."); // ERR level for failures
     }
+
+    return result == 0;
 }
 
 int CellularManager::getModemSignalStrength(int modemIndex) {
@@ -147,7 +150,7 @@ int CellularManager::getModemSignalStrength(int modemIndex) {
     FILE* fp = popen(signalCommand.c_str(), "r");
     
     if (fp == nullptr) {
-        std::cerr << "Failed to run command" << std::endl;
+        syslog(LOG_ERR, "Failed to run command");
         return -1;  // Indicating an error
     }
     
@@ -163,7 +166,7 @@ int CellularManager::getModemSignalStrength(int modemIndex) {
     std::string keyword = "rssi:";
     auto pos = signalInfo.find(keyword);
     if (pos == std::string::npos) {
-        std::cout << "Could not find RSSI information" << std::endl;
+        syslog(LOG_WARNING, "Could not find RSSI information.");
         return -1;
     }
     
@@ -172,7 +175,7 @@ int CellularManager::getModemSignalStrength(int modemIndex) {
     ss >> rssi;
 
     // Print the RSSI value
-    std::cout << "Modem signal strength: " << rssi << " dBm" << std::endl;
+    syslog(LOG_INFO, "Modem signal strength: %d dBm", rssi);
 
     return rssi;
 }
