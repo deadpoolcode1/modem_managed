@@ -13,8 +13,10 @@
 static const char* MODEM_MANAGER_PATH = "org/freedesktop/ModemManager";
 static const char* MODEM_MANAGER_SERVICE = "org.freedesktop.ModemManager";
 static const char* MODEM_MANAGER_INTERFACE = "org.freedesktop.ModemManager";
-const std::string CellularManager::DEFAULT_APN = "rem8.com";
-const std::string CellularManager::DEFAULT_IPTYPE = "ipv4";
+std::string ipType = "ipv4"; // Default value for ipType
+std::string APN = "rem8.com"; // Default value for APN
+int maxConnectTime = 90; // Default value for maxConnectTime
+int minRSSILevel = -90; // Default value for minRSSILevel
 
 CellularManager::CellularManager() 
 {
@@ -27,8 +29,7 @@ CellularManager::~CellularManager()
 }
 
 std::string CellularManager::getModemApn(int modemIndex) {
-    std::string result = getModemInfo(modemIndex, "apn");
-    return result.empty() ? DEFAULT_APN : result;
+    return APN;
 }
 
 std::string CellularManager::getModemInfo(int modemIndex, const std::string& infoType) {
@@ -36,8 +37,7 @@ std::string CellularManager::getModemInfo(int modemIndex, const std::string& inf
 }
 
 std::string CellularManager::getModemIpType(int modemIndex) {
-    std::string result = getModemInfo(modemIndex, "ip type");
-    return result.empty() ? DEFAULT_IPTYPE : result;
+    return ipType;
 }
 
 void CellularManager::setupSignalChecking(int modemIndex) {
@@ -239,17 +239,22 @@ int CellularManager::getMaxConnectTime() {
     return maxConnectTime;
 }
 
+
+
+
 void CellularManager::parseCommandLine(int argc, char *argv[]) {
     int opt;
     static struct option long_options[] = {
         {"connect", required_argument, 0, 'c'},
         {"minRSSI", required_argument, 0, 'r'},
+        {"ipType", required_argument, 0, 'i'},
+        {"APN", required_argument, 0, 'a'},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
     };
-    int option_index = 0;
 
-    while ((opt = getopt_long(argc, argv, "c:r:", long_options, &option_index)) != -1) {
+    int option_index = 0;
+    while ((opt = getopt_long(argc, argv, "c:r:i:a:h", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'c':
                 maxConnectTime = std::stoi(optarg);
@@ -259,13 +264,23 @@ void CellularManager::parseCommandLine(int argc, char *argv[]) {
                 minRSSILevel = std::stoi(optarg);
                 std::cout << "Minimum RSSI Level set to: " << minRSSILevel << std::endl;
                 break;
+            case 'i':
+                ipType = optarg;
+                std::cout << "IP type set to: " << ipType << std::endl;
+                break;
+            case 'a':
+                APN = optarg;
+                std::cout << "APN set to: " << APN << std::endl;
+                break;
             case 'h':
                 std::cout << "Usage: " << argv[0] << " [OPTIONS]\n"
                       << "Options:\n"
                       << "  -c, --connect TIME     Set max connect time\n"
                       << "  -r, --minRSSI LEVEL    Set minimum RSSI level\n"
+                      << "  -i, --ipType TYPE      Set IP type (IPv4 or IPv6)\n"
+                      << "  -a, --APN APN          Set APN\n"
                       << "  -h, --help             Show this help message\n";
-            exit(0);
+                exit(0);
             default:
                 std::cerr << "Invalid option" << std::endl;
                 break;
